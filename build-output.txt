@@ -1,0 +1,21 @@
+﻿馃懡 Taro v3.6.32
+
+node : node:internal/process/promises:289
+所在位置 行:1 字符: 139
++ ... ts\ai\app"; node node_modules\@tarojs\cli\bin\taro build --type h5 -- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (node:internal/process/promises:28 
+   9:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+            triggerUncaughtException(err, true /* fromPromise */);
+            ^
+
+[Error: EPERM: operation not permitted, mkdir 'C:\Users\yang\.taro3.6-rs'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\yang\\.taro3.6-rs'
+}
+
+Node.js v20.11.0

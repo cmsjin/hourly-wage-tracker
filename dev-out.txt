@@ -1,0 +1,7 @@
+👽 Taro v3.6.32
+
+Tips:
+1. 建议开启持久化缓存功能，能有效提升二次编译速度，详情请参考: https://docs.taro.zone/docs/config-detail#cache。
+
+
+缺少npm包@tarojs/webpack5-runner，开始安装...
