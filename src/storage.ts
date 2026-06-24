@@ -130,6 +130,106 @@ export function getTotalSubsidiesByMonth(month: string): number {
   return adjustments.filter(a => a.type === 'subsidy').reduce((sum, a) => sum + a.amount, 0);
 }
 
+// 根据条件补助规则计算单日补助金额
+export function getDailySubsidy(hours: number): number {
+  const settings = getSettings();
+  const conditions = settings.subsidyConditions;
+  
+  if (!conditions || conditions.length === 0) return 0;
+  
+  // 按最小工时从大到小排序，取第一个满足条件的补助
+  const sortedConditions = [...conditions].sort((a, b) => b.minHours - a.minHours);
+  
+  for (const condition of sortedConditions) {
+    if (hours >= condition.minHours) {
+      return condition.amount;
+    }
+  }
+  
+  return 0;
+}
+
+// 检查某天的记录是否全部无补助标签
+function isDayNoSubsidy(records: TimeRecord[]): boolean {
+  const settings = getSettings();
+  if (!settings.tags || settings.tags.length === 0) return false;
+  
+  // 如果某条记录没有标签，则该天可以有补助
+  const hasTagWithoutNoSubsidy = records.some(r => {
+    if (!r.tag) return true;  // 无标签的记录视为可以有补助
+    const tag = settings.tags.find(t => t.name === r.tag);
+    return tag && !tag.noSubsidy;
+  });
+  
+  return !hasTagWithoutNoSubsidy;
+}
+
+// 根据条件补助规则计算月总补助
+export function getConditionalSubsidiesByMonth(month: string): number {
+  const records = getRecordsByMonth(month);
+  let totalSubsidy = 0;
+  
+  // 按日期分组
+  const recordsByDate = new Map<string, TimeRecord[]>();
+  records.forEach(record => {
+    const existing = recordsByDate.get(record.date) || [];
+    existing.push(record);
+    recordsByDate.set(record.date, existing);
+  });
+  
+  recordsByDate.forEach((dayRecords) => {
+    // 如果该天全部记录都是无补助标签，则跳过
+    if (isDayNoSubsidy(dayRecords)) {
+      return;
+    }
+    
+    // 计算该天总工时
+    const dayHours = dayRecords.reduce((sum, r) => sum + r.hours, 0);
+    totalSubsidy += getDailySubsidy(dayHours);
+  });
+  
+  return totalSubsidy;
+}
+
+// 获取标签列表
+export function getTags(): import('./types').Tag[] {
+  const settings = getSettings();
+  return settings.tags || [];
+}
+
+// 保存标签列表
+export function saveTags(tags: import('./types').Tag[]): void {
+  const settings = getSettings();
+  settings.tags = tags;
+  saveSettings(settings);
+}
+
+// 添加标签
+export function addTag(name: string, noSubsidy: boolean = false): import('./types').Tag {
+  const tags = getTags();
+  const newTag: import('./types').Tag = { name, noSubsidy };
+  tags.push(newTag);
+  saveTags(tags);
+  return newTag;
+}
+
+// 删除标签
+export function deleteTag(name: string): void {
+  const tags = getTags();
+  const filtered = tags.filter(t => t.name !== name);
+  saveTags(filtered);
+}
+
+// 更新标签
+export function updateTag(oldName: string, newName: string, noSubsidy: boolean): void {
+  const tags = getTags();
+  const index = tags.findIndex(t => t.name === oldName);
+  if (index !== -1) {
+    tags[index] = { name: newName, noSubsidy };
+    saveTags(tags);
+  }
+}
+
 export function getTotalDeductionsByMonth(month: string): number {
   const adjustments = getAdjustmentsByMonth(month);
   return adjustments.filter(a => a.type === 'deduction').reduce((sum, a) => sum + a.amount, 0);

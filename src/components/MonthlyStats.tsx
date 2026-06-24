@@ -7,7 +7,8 @@ import {
   getAdjustmentsByMonth,
   addAdjustment,
   deleteAdjustment,
-  getSettings
+  getSettings,
+  getConditionalSubsidiesByMonth
 } from '../storage';
 
 interface MonthlyStatsProps {
@@ -51,8 +52,8 @@ export function MonthlyStats({ onClose }: MonthlyStatsProps) {
   const totalHours = getTotalHoursByMonth(currentMonth);
   const totalEarnings = getTotalEarningsByMonth(currentMonth);
   const workDays = getWorkDaysByMonth(currentMonth);
-  const dailySubsidyTotal = workDays * settings.dailySubsidy;
-  const totalSubsidies = adjustments.filter(a => a.type === 'subsidy').reduce((sum, a) => sum + a.amount, 0) + dailySubsidyTotal;
+  const conditionalSubsidyTotal = getConditionalSubsidiesByMonth(currentMonth);
+  const totalSubsidies = adjustments.filter(a => a.type === 'subsidy').reduce((sum, a) => sum + a.amount, 0) + conditionalSubsidyTotal;
   const totalDeductions = adjustments.filter(a => a.type === 'deduction').reduce((sum, a) => sum + a.amount, 0);
   const finalTotal = totalEarnings + totalSubsidies - totalDeductions;
 
@@ -110,11 +111,11 @@ export function MonthlyStats({ onClose }: MonthlyStatsProps) {
                 <span className="stats-value earnings">{totalEarnings}{settings.currency}</span>
               </div>
             </div>
-            {settings.dailySubsidy > 0 && (
+            {settings.subsidyConditions && settings.subsidyConditions.length > 0 && (
               <div className="stats-row subsidy-row">
                 <div className="stats-item">
-                  <span className="stats-label">日补助({settings.dailySubsidy}{settings.currency}/天)</span>
-                  <span className="stats-value">{dailySubsidyTotal}{settings.currency}</span>
+                  <span className="stats-label">条件补助</span>
+                  <span className="stats-value">{conditionalSubsidyTotal}{settings.currency}</span>
                 </div>
               </div>
             )}

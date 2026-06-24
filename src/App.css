@@ -434,6 +434,196 @@ body {
   border-color: #667eea;
 }
 
+.condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.condition-row input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.condition-row span {
+  font-size: 14px;
+  color: #666;
+}
+
+.condition-row .remove-btn {
+  background: #f5576c;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-btn-small {
+  background: #e8e8e8;
+  border: 1px dashed #999;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.add-btn-small:hover {
+  background: #ddd;
+}
+
+/* Tag Styles */
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.tag-item.no-subsidy {
+  background: #fff0f0;
+}
+
+.tag-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.tag-no-subsidy {
+  font-size: 12px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #eee;
+}
+
+.tag-no-subsidy:hover {
+  background: #ddd;
+}
+
+.tag-item.no-subsidy .tag-no-subsidy {
+  color: #f5576c;
+}
+
+.tag-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+}
+
+.tag-checkbox input {
+  width: auto;
+}
+
+.tag-select {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 16px;
+  outline: none;
+  width: 100%;
+  background: #fff;
+}
+
+.tag-select:focus {
+  border-color: #667eea;
+}
+
+.record-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #e8e8e8;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+  margin-left: 8px;
+}
+
+.record-time {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.time-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.time-input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 16px;
+  outline: none;
+  width: 100%;
+}
+
+.time-input:focus {
+  border-color: #667eea;
+}
+
+.break-input {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 16px;
+  outline: none;
+  width: 100%;
+}
+
+.calculated-hours {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #ddd;
+  font-size: 14px;
+  color: #666;
+}
+
+.calculated-hours .hours-value {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 16px;
+}
+
 .submit-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;

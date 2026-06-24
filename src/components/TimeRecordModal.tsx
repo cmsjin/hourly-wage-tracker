@@ -8,6 +8,19 @@ interface TimeRecordModalProps {
   onClose: () => void;
 }
 
+function parseTime(timeStr: string): number {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours + (minutes || 0) / 60;
+}
+
+function formatHours(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h${m}m`;
+}
+
 export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const dateStr = formatDate(date);
   const records = getRecordsByDate(dateStr);
@@ -15,24 +28,67 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const [hours, setHours] = useState('');
   const [rate, setRate] = useState(settings.hourlyRate.toString());
   const [note, setNote] = useState('');
+  const [tag, setTag] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [breakTime, setBreakTime] = useState('0');
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  const calculatedHours = () => {
+    if (!startTime || !endTime) return null;
+    const start = parseTime(startTime);
+    const end = parseTime(endTime);
+    const breakH = parseFloat(breakTime) || 0;
+    let diff = end - start;
+    if (diff < 0) diff += 24;
+    return Math.max(0, diff - breakH);
+  };
+  
   const handleSubmit = () => {
-    const hoursNum = parseFloat(hours);
+    let hoursNum = parseFloat(hours);
+    
+    if (startTime && endTime) {
+      const calc = calculatedHours();
+      if (calc !== null && calc > 0) {
+        hoursNum = calc;
+      }
+    }
+    
     const rateNum = parseFloat(rate);
     
     if (!hoursNum || hoursNum <= 0) return;
     
     if (editingId) {
-      updateRecord(editingId, { hours: hoursNum, rate: rateNum, note });
+      updateRecord(editingId, { 
+        hours: hoursNum, 
+        rate: rateNum, 
+        note, 
+        tag: tag || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        breakTime: parseFloat(breakTime) || undefined
+      });
       setEditingId(null);
     } else {
-      addRecord({ date: dateStr, hours: hoursNum, rate: rateNum, note });
+      addRecord({ 
+        date: dateStr, 
+        hours: hoursNum, 
+        rate: rateNum, 
+        note, 
+        tag: tag || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        breakTime: parseFloat(breakTime) || undefined
+      });
     }
     
     setHours('');
     setRate(settings.hourlyRate.toString());
     setNote('');
+    setTag('');
+    setStartTime('');
+    setEndTime('');
+    setBreakTime('0');
     onClose();
   };
   
@@ -41,6 +97,10 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     setHours(record.hours.toString());
     setRate(record.rate.toString());
     setNote(record.note);
+    setTag(record.tag || '');
+    setStartTime(record.startTime || '');
+    setEndTime(record.endTime || '');
+    setBreakTime(record.breakTime ? record.breakTime.toString() : '0');
   };
   
   const handleDelete = (id: string) => {
@@ -77,7 +137,14 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
             {records.map(record => (
               <div key={record.id} className="record-item">
                 <div className="record-info">
-                  <span className="record-hours">{record.hours}h × {record.rate}{settings.currency}</span>
+                  <span className="record-hours">{formatHours(record.hours)} × {record.rate}{settings.currency}</span>
+                  {record.startTime && record.endTime && (
+                    <span className="record-time">
+                      {record.startTime} - {record.endTime}
+                      {record.breakTime && record.breakTime > 0 && ` (休息${formatHours(record.breakTime)})`}
+                    </span>
+                  )}
+                  {record.tag && <span className="record-tag">{record.tag}</span>}
                   {record.note && <span className="record-note">{record.note}</span>}
                 </div>
                 <div className="record-actions">
@@ -90,6 +157,44 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
           </div>
           
           <div className="form">
+            <div className="time-section">
+              <div className="form-group">
+                <label>开始时间</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="time-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>结束时间</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  className="time-input"
+                />
+              </div>
+              <div className="form-group">
+                <label>休息时间（小时）</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={breakTime}
+                  onChange={e => setBreakTime(e.target.value)}
+                  className="break-input"
+                />
+              </div>
+              {calculatedHours() !== null && (
+                <div className="calculated-hours">
+                  <span>计算工时：</span>
+                  <span className="hours-value">{calculatedHours()!.toFixed(1)} 小时</span>
+                </div>
+              )}
+            </div>
+            
             <div className="form-group">
               <label>工时（小时）</label>
               <input
@@ -98,7 +203,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 min="0.5"
                 value={hours}
                 onChange={e => setHours(e.target.value)}
-                placeholder="输入工时"
+                placeholder="输入工时（或通过时间计算）"
               />
             </div>
             <div className="form-group">
@@ -112,6 +217,23 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 placeholder="输入时薪"
               />
             </div>
+            {settings.tags && settings.tags.length > 0 && (
+              <div className="form-group">
+                <label>标签（可选）</label>
+                <select
+                  value={tag}
+                  onChange={e => setTag(e.target.value)}
+                  className="tag-select"
+                >
+                  <option value="">无标签</option>
+                  {settings.tags.map(t => (
+                    <option key={t.name} value={t.name}>
+                      {t.name}{t.noSubsidy ? ' (无补助)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label>备注（可选）</label>
               <input

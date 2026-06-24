@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { getSettings, saveSettings, exportData, importData, exportCSV, importCSV } from '../storage';
-import { Settings } from '../types';
+import { Settings, SubsidyCondition, Tag } from '../types';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -10,17 +10,55 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const settings = getSettings();
   const [hourlyRate, setHourlyRate] = useState(settings.hourlyRate.toString());
   const [currency, setCurrency] = useState(settings.currency);
-  const [dailySubsidy, setDailySubsidy] = useState(settings.dailySubsidy.toString());
+  const [subsidyConditions, setSubsidyConditions] = useState<SubsidyCondition[]>(
+    settings.subsidyConditions || []
+  );
+  const [tags, setTags] = useState<Tag[]>(settings.tags || []);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagNoSubsidy, setNewTagNoSubsidy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addCondition = () => {
+    setSubsidyConditions([...subsidyConditions, { minHours: 0, amount: 0 }]);
+  };
+
+  const updateCondition = (index: number, field: 'minHours' | 'amount', value: number) => {
+    const newConditions = [...subsidyConditions];
+    newConditions[index] = { ...newConditions[index], [field]: value };
+    setSubsidyConditions(newConditions);
+  };
+
+  const removeCondition = (index: number) => {
+    setSubsidyConditions(subsidyConditions.filter((_, i) => i !== index));
+  };
+
+  const addTag = () => {
+    if (!newTagName.trim()) return;
+    if (tags.some(t => t.name === newTagName.trim())) {
+      alert('标签已存在');
+      return;
+    }
+    setTags([...tags, { name: newTagName.trim(), noSubsidy: newTagNoSubsidy }]);
+    setNewTagName('');
+    setNewTagNoSubsidy(false);
+  };
+
+  const removeTag = (name: string) => {
+    setTags(tags.filter(t => t.name !== name));
+  };
+
+  const toggleTagNoSubsidy = (name: string) => {
+    setTags(tags.map(t => t.name === name ? { ...t, noSubsidy: !t.noSubsidy } : t));
+  };
   
   const handleSave = () => {
     const rate = parseFloat(hourlyRate);
-    const subsidy = parseFloat(dailySubsidy) || 0;
     if (rate > 0) {
       const newSettings: Settings = { 
         hourlyRate: rate, 
         currency,
-        dailySubsidy: subsidy
+        subsidyConditions,
+        tags
       };
       saveSettings(newSettings);
       onClose();
@@ -114,18 +152,72 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </div>
             <div className="form-group">
-              <label>日补助（{currency}/天）</label>
-              <input
-                type="number"
-                step="1"
-                min="0"
-                value={dailySubsidy}
-                onChange={e => setDailySubsidy(e.target.value)}
-                placeholder="输入每日补助金额"
-              />
-              <small style={{ color: '#999', fontSize: '12px' }}>
-                设置后，月统计会自动计算工作天数的补助总额
+              <label>条件补助</label>
+              <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                工时达到条件时自动发放补助，按条件顺序匹配
               </small>
+              {subsidyConditions.map((condition, index) => (
+                <div key={index} className="condition-row">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder="≥工时"
+                    value={condition.minHours}
+                    onChange={e => updateCondition(index, 'minHours', parseFloat(e.target.value) || 0)}
+                    style={{ width: '70px' }}
+                  />
+                  <span>小时</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="补助"
+                    value={condition.amount}
+                    onChange={e => updateCondition(index, 'amount', parseFloat(e.target.value) || 0)}
+                    style={{ width: '70px' }}
+                  />
+                  <span>{currency}</span>
+                  <button className="remove-btn" onClick={() => removeCondition(index)}>×</button>
+                </div>
+              ))}
+              <button className="add-btn-small" onClick={addCondition}>添加条件</button>
+            </div>
+            <div className="form-group">
+              <label>标签管理</label>
+              <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                设置标签，用于标记工时记录。无补助标签的记录不计入条件补助
+              </small>
+              <div className="tag-list">
+                {tags.map(tag => (
+                  <div key={tag.name} className={`tag-item ${tag.noSubsidy ? 'no-subsidy' : ''}`}>
+                    <span className="tag-name">{tag.name}</span>
+                    <span className="tag-no-subsidy" onClick={() => toggleTagNoSubsidy(tag.name)}>
+                      {tag.noSubsidy ? '❌无补助' : '✓有补助'}
+                    </span>
+                    <button className="remove-btn" onClick={() => removeTag(tag.name)}>×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="tag-add-row">
+                <input
+                  type="text"
+                  placeholder="新标签名称"
+                  value={newTagName}
+                  onChange={e => setNewTagName(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addTag()}
+                  style={{ flex: 1 }}
+                />
+                <label className="tag-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={newTagNoSubsidy}
+                    onChange={e => setNewTagNoSubsidy(e.target.checked)}
+                  />
+                  无补助
+                </label>
+                <button className="add-btn-small" onClick={addTag}>添加</button>
+              </div>
             </div>
             <button className="submit-btn" onClick={handleSave}>保存设置</button>
           </div>
