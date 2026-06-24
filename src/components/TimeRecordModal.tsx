@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { formatDate, applyTemplate } from '../utils';
 import { addRecord, updateRecord, deleteRecord, getRecordsByDate, getSettings } from '../storage';
 import { TimeRecord } from '../types';
@@ -34,6 +34,8 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const [breakTime, setBreakTime] = useState('0');
   const [noSubsidy, setNoSubsidy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showNotePopup, setShowNotePopup] = useState(false);
+  const [generatedNote, setGeneratedNote] = useState('');
   
   const calculatedHours = () => {
     if (!startTime || !endTime) return null;
@@ -45,23 +47,20 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     return Math.max(0, diff - breakH);
   };
   
-  // Auto-generate note from template when not editing
-  useEffect(() => {
-    if (!editingId && settings.noteTemplate && !note) {
-      const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
-      const generatedNote = applyTemplate(
-        settings.noteTemplate,
-        dateStr,
-        startTime || undefined,
-        endTime || undefined,
-        hoursNum !== null && !isNaN(hoursNum) ? hoursNum : undefined,
-        tag || undefined
-      );
-      if (generatedNote) {
-        setNote(generatedNote);
-      }
-    }
-  }, [startTime, endTime, hours, tag, dateStr, editingId, settings.noteTemplate, note]);
+  // Auto-generate note preview from template
+  const getGeneratedNote = () => {
+    if (!settings.noteTemplate) return '';
+    const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
+    const validHours = (hoursNum !== null && !isNaN(hoursNum) && hoursNum > 0) ? hoursNum : undefined;
+    return applyTemplate(
+      settings.noteTemplate,
+      dateStr,
+      startTime || undefined,
+      endTime || undefined,
+      validHours,
+      tag || undefined
+    );
+  };
   
   const handleSubmit = () => {
     let hoursNum = parseFloat(hours);
@@ -90,11 +89,14 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
       });
       setEditingId(null);
     } else {
+      // Generate note from template
+      const generatedNote = getGeneratedNote();
+      
       addRecord({ 
         date: dateStr, 
         hours: hoursNum, 
         rate: rateNum, 
-        note, 
+        note: generatedNote, 
         tag: tag || undefined,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
@@ -102,9 +104,11 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
         noSubsidy: noSubsidy || undefined
       });
       
-      // Copy generated note to clipboard
-      if (note) {
-        navigator.clipboard.writeText(note).catch(() => {
+      // Show popup and copy to clipboard
+      if (generatedNote) {
+        setGeneratedNote(generatedNote);
+        setShowNotePopup(true);
+        navigator.clipboard.writeText(generatedNote).catch(() => {
           // Ignore clipboard errors
         });
       }
@@ -275,6 +279,12 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 无补助（该记录不计算日补助）
               </label>
             </div>
+            {settings.noteTemplate && !editingId && (
+              <div className="form-group">
+                <label>模板预览</label>
+                <div className="note-preview">{getGeneratedNote() || '（填写信息后自动生成）'}</div>
+              </div>
+            )}
             <div className="form-group">
               <label>备注（可选）</label>
               <input
@@ -289,6 +299,22 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
             </button>
           </div>
         </div>
+        
+        {/* Note Popup */}
+        {showNotePopup && (
+          <div className="modal-overlay" onClick={() => setShowNotePopup(false)}>
+            <div className="modal note-popup" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>备注已复制到剪贴板</h2>
+                <button className="close-btn" onClick={() => setShowNotePopup(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="note-content">{generatedNote}</div>
+                <button className="submit-btn" onClick={() => setShowNotePopup(false)}>确定</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

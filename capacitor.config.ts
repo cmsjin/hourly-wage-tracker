@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.hourlywage.tracker',
-  appName: '小时工记账',
+  appId: 'com.yangtz.jigongshi',
+  appName: '昜·记工时',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

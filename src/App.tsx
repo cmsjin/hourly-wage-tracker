@@ -37,7 +37,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>小时工记账</h1>
+        <h1>昜·记工时</h1>
         <div className="header-btns">
           <button className="stats-btn" onClick={() => setShowStatsModal(true)}>
             📊

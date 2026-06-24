@@ -1,6 +1,6 @@
 {
-  "name": "hourly-wage-tracker",
-  "version": "1.0.0",
+  "name": "yangji-gongshi",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {

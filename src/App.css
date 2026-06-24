@@ -948,6 +948,31 @@ body {
   cursor: pointer;
 }
 
+.note-preview {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: #666;
+  min-height: 44px;
+}
+
+.note-popup {
+  max-width: 400px;
+}
+
+.note-content {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 16px;
+  color: #333;
+  word-break: break-all;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
 .empty-message {
   text-align: center;
   color: #999;
