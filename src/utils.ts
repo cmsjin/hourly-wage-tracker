@@ -46,3 +46,42 @@ export function isFutureDate(date: Date): boolean {
   today.setHours(0, 0, 0, 0);
   return date > today;
 }
+
+export function formatHours(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h${m}m`;
+}
+
+export function applyTemplate(template: string, date: string, startTime?: string, endTime?: string, hours?: number, tag?: string): string {
+  if (!template) return '';
+  
+  let result = template;
+  
+  // Replace {date}
+  result = result.replace(/{date}/g, date);
+  
+  // Replace {timeRange}
+  if (startTime && endTime) {
+    result = result.replace(/{timeRange}/g, `${startTime}-${endTime}`);
+  } else {
+    result = result.replace(/{timeRange}/g, '');
+  }
+  
+  // Replace {hours}
+  if (hours !== undefined) {
+    result = result.replace(/{hours}/g, hours.toString());
+  } else {
+    result = result.replace(/{hours}/g, '');
+  }
+  
+  // Replace {tag}
+  if (tag) {
+    result = result.replace(/{tag}/g, tag);
+  } else {
+    result = result.replace(/{tag}/g, '');
+  }
+  
+  return result;
+}

@@ -80,6 +80,98 @@ export function getWorkDaysByMonth(month: string): number {
   return uniqueDates.size;
 }
 
+// Year statistics functions
+export function getRecordsByYear(year: string): TimeRecord[] {
+  const records = getRecords();
+  return records.filter(r => r.date.startsWith(year));
+}
+
+export function getTotalHoursByYear(year: string): number {
+  const records = getRecordsByYear(year);
+  return records.reduce((sum, r) => sum + r.hours, 0);
+}
+
+export function getTotalEarningsByYear(year: string): number {
+  const records = getRecordsByYear(year);
+  return records.reduce((sum, r) => sum + r.hours * r.rate, 0);
+}
+
+export function getWorkDaysByYear(year: string): number {
+  const records = getRecordsByYear(year);
+  const uniqueDates = new Set(records.map(r => r.date));
+  return uniqueDates.size;
+}
+
+export function getAdjustmentsByYear(year: string): MonthlyAdjustment[] {
+  const adjustments = getAdjustments();
+  return adjustments.filter(a => a.month.startsWith(year));
+}
+
+export function getConditionalSubsidiesByYear(year: string): number {
+  let total = 0;
+  for (let month = 1; month <= 12; month++) {
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    total += getConditionalSubsidiesByMonth(monthStr);
+  }
+  return total;
+}
+
+// Custom date range statistics functions
+export function getRecordsByDateRange(startDate: string, endDate: string): TimeRecord[] {
+  const records = getRecords();
+  return records.filter(r => r.date >= startDate && r.date <= endDate);
+}
+
+export function getTotalHoursByDateRange(startDate: string, endDate: string): number {
+  const records = getRecordsByDateRange(startDate, endDate);
+  return records.reduce((sum, r) => sum + r.hours, 0);
+}
+
+export function getTotalEarningsByDateRange(startDate: string, endDate: string): number {
+  const records = getRecordsByDateRange(startDate, endDate);
+  return records.reduce((sum, r) => sum + r.hours * r.rate, 0);
+}
+
+export function getWorkDaysByDateRange(startDate: string, endDate: string): number {
+  const records = getRecordsByDateRange(startDate, endDate);
+  const uniqueDates = new Set(records.map(r => r.date));
+  return uniqueDates.size;
+}
+
+export function getAdjustmentsByDateRange(startDate: string, endDate: string): MonthlyAdjustment[] {
+  const adjustments = getAdjustments();
+  return adjustments.filter(a => a.month >= startDate.substring(0, 7) && a.month <= endDate.substring(0, 7));
+}
+
+export function getConditionalSubsidiesByDateRange(startDate: string, endDate: string): number {
+  let total = 0;
+  
+  // Iterate through each month in the range
+  const startMonth = startDate.substring(0, 7);
+  const endMonth = endDate.substring(0, 7);
+  
+  const [startYear, startMon] = startMonth.split('-').map(Number);
+  const [endYear, endMon] = endMonth.split('-').map(Number);
+  
+  let currentYear = startYear;
+  let currentMon = startMon;
+  
+  while (currentYear <= endYear && currentMon <= endMon) {
+    const monthStr = `${currentYear}-${String(currentMon).padStart(2, '0')}`;
+    total += getConditionalSubsidiesByMonth(monthStr);
+    
+    currentMon++;
+    if (currentMon > 12) {
+      currentMon = 1;
+      currentYear++;
+    }
+    
+    if (currentYear === endYear && currentMon > endMon) break;
+  }
+  
+  return total;
+}
+
 // Monthly adjustments functions
 export function getAdjustments(): MonthlyAdjustment[] {
   try {
@@ -149,21 +241,6 @@ export function getDailySubsidy(hours: number): number {
   return 0;
 }
 
-// 检查某天的记录是否全部无补助标签
-function isDayNoSubsidy(records: TimeRecord[]): boolean {
-  const settings = getSettings();
-  if (!settings.tags || settings.tags.length === 0) return false;
-  
-  // 如果某条记录没有标签，则该天可以有补助
-  const hasTagWithoutNoSubsidy = records.some(r => {
-    if (!r.tag) return true;  // 无标签的记录视为可以有补助
-    const tag = settings.tags.find(t => t.name === r.tag);
-    return tag && !tag.noSubsidy;
-  });
-  
-  return !hasTagWithoutNoSubsidy;
-}
-
 // 根据条件补助规则计算月总补助
 export function getConditionalSubsidiesByMonth(month: string): number {
   const records = getRecordsByMonth(month);
@@ -178,13 +255,16 @@ export function getConditionalSubsidiesByMonth(month: string): number {
   });
   
   recordsByDate.forEach((dayRecords) => {
-    // 如果该天全部记录都是无补助标签，则跳过
-    if (isDayNoSubsidy(dayRecords)) {
+    // 过滤掉无补助的记录，只计算有补助的记录工时
+    const subsidyRecords = dayRecords.filter(r => !r.noSubsidy);
+    
+    // 如果该天全部记录都是无补助，则跳过
+    if (subsidyRecords.length === 0) {
       return;
     }
     
-    // 计算该天总工时
-    const dayHours = dayRecords.reduce((sum, r) => sum + r.hours, 0);
+    // 计算有补助记录的工时总和
+    const dayHours = subsidyRecords.reduce((sum, r) => sum + r.hours, 0);
     totalSubsidy += getDailySubsidy(dayHours);
   });
   

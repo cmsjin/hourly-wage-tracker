@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { formatDate } from '../utils';
+import { useState, useEffect } from 'react';
+import { formatDate, applyTemplate } from '../utils';
 import { addRecord, updateRecord, deleteRecord, getRecordsByDate, getSettings } from '../storage';
 import { TimeRecord } from '../types';
 
@@ -32,6 +32,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [breakTime, setBreakTime] = useState('0');
+  const [noSubsidy, setNoSubsidy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const calculatedHours = () => {
@@ -43,6 +44,24 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     if (diff < 0) diff += 24;
     return Math.max(0, diff - breakH);
   };
+  
+  // Auto-generate note from template when not editing
+  useEffect(() => {
+    if (!editingId && settings.noteTemplate && !note) {
+      const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
+      const generatedNote = applyTemplate(
+        settings.noteTemplate,
+        dateStr,
+        startTime || undefined,
+        endTime || undefined,
+        hoursNum !== null && !isNaN(hoursNum) ? hoursNum : undefined,
+        tag || undefined
+      );
+      if (generatedNote) {
+        setNote(generatedNote);
+      }
+    }
+  }, [startTime, endTime, hours, tag, dateStr, editingId, settings.noteTemplate, note]);
   
   const handleSubmit = () => {
     let hoursNum = parseFloat(hours);
@@ -66,7 +85,8 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
         tag: tag || undefined,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
-        breakTime: parseFloat(breakTime) || undefined
+        breakTime: parseFloat(breakTime) || undefined,
+        noSubsidy: noSubsidy || undefined
       });
       setEditingId(null);
     } else {
@@ -78,8 +98,16 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
         tag: tag || undefined,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
-        breakTime: parseFloat(breakTime) || undefined
+        breakTime: parseFloat(breakTime) || undefined,
+        noSubsidy: noSubsidy || undefined
       });
+      
+      // Copy generated note to clipboard
+      if (note) {
+        navigator.clipboard.writeText(note).catch(() => {
+          // Ignore clipboard errors
+        });
+      }
     }
     
     setHours('');
@@ -89,6 +117,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     setStartTime('');
     setEndTime('');
     setBreakTime('0');
+    setNoSubsidy(false);
     onClose();
   };
   
@@ -101,6 +130,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     setStartTime(record.startTime || '');
     setEndTime(record.endTime || '');
     setBreakTime(record.breakTime ? record.breakTime.toString() : '0');
+    setNoSubsidy(!!record.noSubsidy);
   };
   
   const handleDelete = (id: string) => {
@@ -145,6 +175,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                     </span>
                   )}
                   {record.tag && <span className="record-tag">{record.tag}</span>}
+                  {record.noSubsidy && <span className="record-tag no-subsidy">无补助</span>}
                   {record.note && <span className="record-note">{record.note}</span>}
                 </div>
                 <div className="record-actions">
@@ -234,6 +265,16 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 </select>
               </div>
             )}
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={noSubsidy}
+                  onChange={e => setNoSubsidy(e.target.checked)}
+                />
+                无补助（该记录不计算日补助）
+              </label>
+            </div>
             <div className="form-group">
               <label>备注（可选）</label>
               <input

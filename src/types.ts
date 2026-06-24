@@ -8,6 +8,7 @@ export interface TimeRecord {
   startTime?: string;  // 开始时间 HH:mm
   endTime?: string;    // 结束时间 HH:mm
   breakTime?: number;  // 休息时间（小时）
+  noSubsidy?: boolean; // 是否无日补助
 }
 
 export interface MonthlyAdjustment {
@@ -33,11 +34,13 @@ export interface Settings {
   currency: string;
   subsidyConditions: SubsidyCondition[];  // 条件补助列表
   tags: Tag[];  // 标签列表
+  noteTemplate: string;  // 备注模板
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   hourlyRate: 20,
   currency: '元',
   subsidyConditions: [],
-  tags: []
+  tags: [],
+  noteTemplate: ''
 };

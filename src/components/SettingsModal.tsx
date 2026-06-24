@@ -14,6 +14,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     settings.subsidyConditions || []
   );
   const [tags, setTags] = useState<Tag[]>(settings.tags || []);
+  const [noteTemplate, setNoteTemplate] = useState(settings.noteTemplate || '');
   const [newTagName, setNewTagName] = useState('');
   const [newTagNoSubsidy, setNewTagNoSubsidy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +59,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         hourlyRate: rate, 
         currency,
         subsidyConditions,
-        tags
+        tags,
+        noteTemplate
       };
       saveSettings(newSettings);
       onClose();
@@ -219,6 +221,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 <button className="add-btn-small" onClick={addTag}>添加</button>
               </div>
             </div>
+            <div className="form-group">
+              <label>备注模板</label>
+              <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
+                添加工时记录时自动生成备注。可用变量：{'{date}'}（日期）、{'{timeRange}'}（时间段）、{'{hours}'}（工时）、{'{tag}'}（标签）
+              </small>
+              <textarea
+                value={noteTemplate}
+                onChange={e => setNoteTemplate(e.target.value)}
+                placeholder="例如：{'{date}'} {'{timeRange}'} 工作{'{hours}'}小时 {'{tag}'}"
+                rows={3}
+                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
             <button className="submit-btn" onClick={handleSave}>保存设置</button>
           </div>
 
@@ -238,6 +253,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
             <div className="import-warning">
               ⚠️ 导入数据会追加到当前记录，请谨慎操作
+            </div>
+          </div>
+
+          <div className="about-section">
+            <h3>关于</h3>
+            <div className="about-content">
+              <div className="about-item">
+                <span className="about-label">应用名称</span>
+                <span className="about-value">昜·记工时</span>
+              </div>
+              <div className="about-item">
+                <span className="about-label">版本</span>
+                <span className="about-value">1.0.0</span>
+              </div>
+              <div className="about-item">
+                <span className="about-label">联系作者</span>
+                <span className="about-value">
+                  <a href="mailto:ytz@yangtz.win">ytz@yangtz.win</a>
+                </span>
+              </div>
             </div>
           </div>
         </div>
