@@ -1,3 +1,7 @@
 include ':app'
+include ':capacitor-android'
+
+def capacitorAndroidPath = new File(rootProject.projectDir.parent, 'node_modules/@capacitor/android/capacitor')
+project(':capacitor-android').projectDir = capacitorAndroidPath
 
 rootProject.name = '小时工记账'

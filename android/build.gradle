@@ -12,13 +12,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://maven.pkg.github.com/ionic-team/capacitor' 
-            credentials { 
-                username = System.getenv("GITHUB_ACTOR") ?: "" 
-                password = System.getenv("GITHUB_TOKEN") ?: "" 
-            } 
-        }
-        maven { url 'https://repo.spring.io/plugins-release/' }
     }
 }
 
