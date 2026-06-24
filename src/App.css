@@ -161,6 +161,8 @@ body {
   transition: all 0.2s;
   position: relative;
   padding: 4px;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .calendar-day.empty {
@@ -188,26 +190,37 @@ body {
 }
 
 .day-number {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .day-summary {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   margin-top: 2px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .day-summary .hours {
-  font-size: 10px;
+  font-size: 9px;
   opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .day-summary .earnings {
-  font-size: 10px;
+  font-size: 9px;
   opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .add-btn {
