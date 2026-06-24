@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar } from './components/Calendar';
 import { TimeRecordModal } from './components/TimeRecordModal';
 import { SettingsModal } from './components/SettingsModal';
+import { MonthlyStats } from './components/MonthlyStats';
 import { getTotalHoursByDate, getTotalEarningsByDate, getSettings } from './storage';
 import { formatDate, isToday } from './utils';
 import './App.css';
@@ -10,6 +11,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   
   const dateStr = formatDate(selectedDate);
   const hours = getTotalHoursByDate(dateStr);
@@ -36,9 +38,14 @@ function App() {
     <div className="app">
       <header className="header">
         <h1>小时工记账</h1>
-        <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>
-          ⚙️
-        </button>
+        <div className="header-btns">
+          <button className="stats-btn" onClick={() => setShowStatsModal(true)}>
+            📊
+          </button>
+          <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>
+            ⚙️
+          </button>
+        </div>
       </header>
       
       <main className="main">
@@ -71,6 +78,10 @@ function App() {
       
       {showSettingsModal && (
         <SettingsModal onClose={() => setShowSettingsModal(false)} />
+      )}
+      
+      {showStatsModal && (
+        <MonthlyStats onClose={() => setShowStatsModal(false)} />
       )}
     </div>
   );
