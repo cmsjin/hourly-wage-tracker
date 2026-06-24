@@ -176,3 +176,108 @@ export function importData(data: ExportData): void {
     saveSettings(data.settings);
   }
 }
+
+// CSV functions
+export function exportCSV(): string {
+  const records = getRecords();
+  const adjustments = getAdjustments();
+  
+  let csv = '\uFEFF';
+  
+  csv += '类型,日期/月份,小时数,时薪,金额,备注\n';
+  
+  records.forEach(record => {
+    csv += `工时,${record.date},${record.hours},${record.rate},${record.hours * record.rate},"${record.note.replace(/"/g, '""')}"\n`;
+  });
+  
+  adjustments.forEach(adjustment => {
+    const type = adjustment.type === 'subsidy' ? '补助' : '扣款';
+    csv += `${type},${adjustment.month},,,${adjustment.amount},"${adjustment.note.replace(/"/g, '""')}"\n`;
+  });
+  
+  return csv;
+}
+
+export function importCSV(csv: string): void {
+  const lines = csv.split('\n').filter(line => line.trim());
+  if (lines.length < 2) return;
+  
+  const newRecords: TimeRecord[] = [];
+  const newAdjustments: MonthlyAdjustment[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const parts = parseCSVLine(line);
+    
+    if (parts.length < 2) continue;
+    
+    const type = parts[0].trim();
+    
+    if (type === '工时') {
+      const date = parts[1]?.trim();
+      const hours = parseFloat(parts[2]?.trim() || '0');
+      const rate = parseFloat(parts[3]?.trim() || '0');
+      const note = parts[5]?.trim() || '';
+      
+      if (date && hours > 0) {
+        newRecords.push({
+          id: Date.now().toString() + '_' + i,
+          date,
+          hours,
+          rate: rate || getSettings().hourlyRate,
+          note
+        });
+      }
+    } else if (type === '补助' || type === '扣款') {
+      const month = parts[1]?.trim();
+      const amount = parseFloat(parts[4]?.trim() || '0');
+      const note = parts[5]?.trim() || '';
+      
+      if (month && amount > 0) {
+        newAdjustments.push({
+          id: Date.now().toString() + '_' + i,
+          month,
+          type: type === '补助' ? 'subsidy' : 'deduction',
+          amount,
+          note
+        });
+      }
+    }
+  }
+  
+  if (newRecords.length > 0) {
+    saveRecords([...getRecords(), ...newRecords]);
+  }
+  if (newAdjustments.length > 0) {
+    saveAdjustments([...getAdjustments(), ...newAdjustments]);
+  }
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"' && !inQuotes) {
+      inQuotes = true;
+    } else if (char === '"' && inQuotes) {
+      if (line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = false;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current);
+  return result;
+}

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { getSettings, saveSettings, exportData, importData } from '../storage';
+import { getSettings, saveSettings, exportData, importData, exportCSV, importCSV } from '../storage';
 import { Settings } from '../types';
 
 interface SettingsModalProps {
@@ -27,13 +27,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     }
   };
 
-  const handleExport = () => {
+  const handleExportJSON = () => {
     const data = exportData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `hourly-wage-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    const csv = exportCSV();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hourly-wage-data-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -51,9 +64,17 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
-        importData(data);
-        alert('数据导入成功！');
+        const content = event.target?.result as string;
+        
+        if (file.name.endsWith('.csv')) {
+          importCSV(content);
+          alert('CSV数据导入成功！');
+        } else {
+          const data = JSON.parse(content);
+          importData(data);
+          alert('JSON数据导入成功！');
+        }
+        
         onClose();
       } catch {
         alert('导入失败：文件格式不正确');
@@ -112,18 +133,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <div className="import-export-section">
             <h3>数据导入导出</h3>
             <div className="import-export-btns">
-              <button className="export-btn" onClick={handleExport}>导出数据</button>
+              <button className="export-btn" onClick={handleExportJSON}>导出 JSON</button>
+              <button className="export-btn" onClick={handleExportCSV}>导出 CSV</button>
               <button className="import-btn" onClick={handleImportClick}>导入数据</button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json"
+                accept=".json,.csv"
                 style={{ display: 'none' }}
                 onChange={handleImport}
               />
             </div>
             <div className="import-warning">
-              ⚠️ 导入数据会覆盖当前所有记录，请谨慎操作
+              ⚠️ 导入数据会追加到当前记录，请谨慎操作
             </div>
           </div>
         </div>
