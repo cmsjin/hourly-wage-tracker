@@ -958,6 +958,26 @@ body {
   min-height: 44px;
 }
 
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.copy-btn {
+  background: #667eea;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: #5568d3;
+}
+
 .note-popup {
   max-width: 400px;
 }
@@ -1150,4 +1170,122 @@ body {
   .calendar {
     padding: 16px;
   }
+}
+
+/* Mode switch styles */
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.mode-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.break-time-row {
+  display: flex;
+  gap: 12px;
+}
+
+.break-time-row .form-group {
+  flex: 1;
+}
+
+.break-time-row .break-input {
+  width: 100%;
+}
+
+.template-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.template-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.template-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.template-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.template-actions .edit-btn {
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.template-actions .remove-btn {
+  background: #f5576c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.template-condition {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.template-content {
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+.empty-template {
+  text-align: center;
+  color: #999;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.template-form {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px dashed #999;
 }

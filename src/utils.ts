@@ -1,3 +1,5 @@
+import { SmartTemplate } from './types';
+
 export function formatDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -100,4 +102,43 @@ export function applyTemplate(template: string, date: string, startTime?: string
   result = result.replace(/{totalBreak}/g, totalBreak.toString());
   
   return result;
+}
+
+export function selectSmartTemplate(templates: SmartTemplate[], noonBreak: number, eveningBreak: number): SmartTemplate | null {
+  for (const template of templates) {
+    const { conditions } = template;
+    let match = true;
+    
+    if (conditions.noonBreak && conditions.noonBreakValue !== undefined) {
+      const noonValue = noonBreak || 0;
+      switch (conditions.noonBreak) {
+        case 'gt': match = match && noonValue > conditions.noonBreakValue; break;
+        case 'gte': match = match && noonValue >= conditions.noonBreakValue; break;
+        case 'eq': match = match && noonValue === conditions.noonBreakValue; break;
+        case 'lt': match = match && noonValue < conditions.noonBreakValue; break;
+        case 'lte': match = match && noonValue <= conditions.noonBreakValue; break;
+        case 'ne': match = match && noonValue !== conditions.noonBreakValue; break;
+      }
+    }
+    
+    if (!match) continue;
+    
+    if (conditions.eveningBreak && conditions.eveningBreakValue !== undefined) {
+      const eveningValue = eveningBreak || 0;
+      switch (conditions.eveningBreak) {
+        case 'gt': match = match && eveningValue > conditions.eveningBreakValue; break;
+        case 'gte': match = match && eveningValue >= conditions.eveningBreakValue; break;
+        case 'eq': match = match && eveningValue === conditions.eveningBreakValue; break;
+        case 'lt': match = match && eveningValue < conditions.eveningBreakValue; break;
+        case 'lte': match = match && eveningValue <= conditions.eveningBreakValue; break;
+        case 'ne': match = match && eveningValue !== conditions.eveningBreakValue; break;
+      }
+    }
+    
+    if (match) {
+      return template;
+    }
+  }
+  
+  return null;
 }

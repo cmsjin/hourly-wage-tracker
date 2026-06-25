@@ -1,4 +1,4 @@
-import { TimeRecord, Settings, DEFAULT_SETTINGS, MonthlyAdjustment } from './types';
+import { TimeRecord, Settings, DEFAULT_SETTINGS, MonthlyAdjustment, LastInputData, RecordMode } from './types';
 
 const RECORDS_KEY = 'hourly_wage_records';
 const SETTINGS_KEY = 'hourly_wage_settings';
@@ -345,12 +345,29 @@ export function exportData(): ExportData {
   };
 }
 
-export function importData(data: ExportData): void {
-  if (data.records) {
-    saveRecords(data.records);
+export function importData(data: ExportData, overwrite: boolean = false): void {
+  if (data.records && data.records.length > 0) {
+    const existingRecords = overwrite ? getRecords() : [];
+    
+    if (overwrite) {
+      // Get dates of imported records
+      const importedDates = new Set(data.records.map(r => r.date));
+      // Remove existing records that have dates in imported data
+      const filteredRecords = existingRecords.filter(r => !importedDates.has(r.date));
+      saveRecords([...filteredRecords, ...data.records]);
+    } else {
+      saveRecords([...existingRecords, ...data.records]);
+    }
   }
   if (data.adjustments) {
-    saveAdjustments(data.adjustments);
+    const existingAdjustments = overwrite ? getAdjustments() : [];
+    if (overwrite) {
+      const importedMonths = new Set(data.adjustments.map(a => a.month));
+      const filteredAdjustments = existingAdjustments.filter(a => !importedMonths.has(a.month));
+      saveAdjustments([...filteredAdjustments, ...data.adjustments]);
+    } else {
+      saveAdjustments([...existingAdjustments, ...data.adjustments]);
+    }
   }
   if (data.settings) {
     saveSettings(data.settings);
@@ -378,7 +395,7 @@ export function exportCSV(): string {
   return csv;
 }
 
-export function importCSV(csv: string): void {
+export function importCSV(csv: string, overwrite: boolean = false): void {
   const lines = csv.split('\n').filter(line => line.trim());
   if (lines.length < 2) return;
   
@@ -426,10 +443,24 @@ export function importCSV(csv: string): void {
   }
   
   if (newRecords.length > 0) {
-    saveRecords([...getRecords(), ...newRecords]);
+    const existingRecords = overwrite ? getRecords() : [];
+    if (overwrite) {
+      const importedDates = new Set(newRecords.map(r => r.date));
+      const filteredRecords = existingRecords.filter(r => !importedDates.has(r.date));
+      saveRecords([...filteredRecords, ...newRecords]);
+    } else {
+      saveRecords([...existingRecords, ...newRecords]);
+    }
   }
   if (newAdjustments.length > 0) {
-    saveAdjustments([...getAdjustments(), ...newAdjustments]);
+    const existingAdjustments = overwrite ? getAdjustments() : [];
+    if (overwrite) {
+      const importedMonths = new Set(newAdjustments.map(a => a.month));
+      const filteredAdjustments = existingAdjustments.filter(a => !importedMonths.has(a.month));
+      saveAdjustments([...filteredAdjustments, ...newAdjustments]);
+    } else {
+      saveAdjustments([...existingAdjustments, ...newAdjustments]);
+    }
   }
 }
 
@@ -460,4 +491,42 @@ function parseCSVLine(line: string): string[] {
   
   result.push(current);
   return result;
+}
+
+// 获取历史标签列表（从所有记录中提取，自动去重）
+export function getHistoryTags(): string[] {
+  const records = getRecords();
+  const tagSet = new Set<string>();
+  records.forEach(record => {
+    if (record.tag) {
+      tagSet.add(record.tag);
+    }
+  });
+  return Array.from(tagSet).sort();
+}
+
+// 保存上次录入内容
+export function saveLastInput(data: LastInputData): void {
+  const settings = getSettings();
+  settings.lastInput = data;
+  saveSettings(settings);
+}
+
+// 获取上次录入内容
+export function getLastInput(): LastInputData | undefined {
+  const settings = getSettings();
+  return settings.lastInput;
+}
+
+// 保存记录模式
+export function saveRecordMode(mode: RecordMode): void {
+  const settings = getSettings();
+  settings.recordMode = mode;
+  saveSettings(settings);
+}
+
+// 获取记录模式
+export function getRecordMode(): RecordMode {
+  const settings = getSettings();
+  return settings.recordMode || 'simple';
 }

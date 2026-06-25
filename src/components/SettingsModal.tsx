@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { getSettings, saveSettings, exportData, importData, exportCSV, importCSV } from '../storage';
-import { Settings, SubsidyCondition, Tag } from '../types';
+import { Settings, SubsidyCondition, Tag, SmartTemplate } from '../types';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -14,18 +14,88 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     settings.subsidyConditions || []
   );
   const [tags, setTags] = useState<Tag[]>(settings.tags || []);
-  const [noteTemplate, setNoteTemplate] = useState(settings.noteTemplate || '');
+  const [smartTemplates, setSmartTemplates] = useState<SmartTemplate[]>(settings.smartTemplates || []);
   const [noonBreak, setNoonBreak] = useState(settings.noonBreak?.toString() || '1');
   const [eveningBreak, setEveningBreak] = useState(settings.eveningBreak?.toString() || '0');
   const [newTagName, setNewTagName] = useState('');
   const [newTagNoSubsidy, setNewTagNoSubsidy] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<SmartTemplate | null>(null);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [importOverwrite, setImportOverwrite] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const operators = [
+    { value: 'gt', label: '>' },
+    { value: 'gte', label: '≥' },
+    { value: 'eq', label: '=' },
+    { value: 'lt', label: '<' },
+    { value: 'lte', label: '≤' },
+    { value: 'ne', label: '≠' },
+  ];
+
+  const addSmartTemplate = () => {
+    const newTemplate: SmartTemplate = {
+      id: Date.now().toString(),
+      name: '',
+      conditions: {
+        noonBreak: 'gt',
+        noonBreakValue: 0,
+      },
+      template: '',
+    };
+    setEditingTemplate(newTemplate);
+    setShowTemplateForm(true);
+  };
+
+  const editSmartTemplate = (template: SmartTemplate) => {
+    setEditingTemplate(template);
+    setShowTemplateForm(true);
+  };
+
+  const saveSmartTemplate = () => {
+    if (!editingTemplate || !editingTemplate.name.trim() || !editingTemplate.template.trim()) {
+      alert('请填写模板名称和模板内容');
+      return;
+    }
+    if (!editingTemplate.conditions.noonBreak && !editingTemplate.conditions.eveningBreak) {
+      alert('请至少设置一个条件');
+      return;
+    }
+    if (editingTemplate.id) {
+      setSmartTemplates(smartTemplates.map(t => t.id === editingTemplate.id ? editingTemplate : t));
+    } else {
+      setSmartTemplates([...smartTemplates, editingTemplate]);
+    }
+    setEditingTemplate(null);
+    setShowTemplateForm(false);
+  };
+
+  const deleteSmartTemplate = (id: string) => {
+    if (confirm('确定删除该模板吗？')) {
+      setSmartTemplates(smartTemplates.filter(t => t.id !== id));
+    }
+  };
+
+  const updateTemplateField = (field: keyof SmartTemplate, value: string | number) => {
+    if (editingTemplate) {
+      setEditingTemplate({ ...editingTemplate, [field]: value });
+    }
+  };
+
+  const updateCondition = (field: keyof SmartTemplate['conditions'], value: any) => {
+    if (editingTemplate) {
+      setEditingTemplate({
+        ...editingTemplate,
+        conditions: { ...editingTemplate.conditions, [field]: value }
+      });
+    }
+  };
 
   const addCondition = () => {
     setSubsidyConditions([...subsidyConditions, { minHours: 0, amount: 0 }]);
   };
 
-  const updateCondition = (index: number, field: 'minHours' | 'amount', value: number) => {
+  const updateSubsidyCondition = (index: number, field: 'minHours' | 'amount', value: number) => {
     const newConditions = [...subsidyConditions];
     newConditions[index] = { ...newConditions[index], [field]: value };
     setSubsidyConditions(newConditions);
@@ -62,9 +132,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         currency,
         subsidyConditions,
         tags,
-        noteTemplate,
+        noteTemplate: settings.noteTemplate,
+        smartTemplates,
         noonBreak: parseFloat(noonBreak) || 0,
-        eveningBreak: parseFloat(eveningBreak) || 0
+        eveningBreak: parseFloat(eveningBreak) || 0,
+        recordMode: settings.recordMode || 'simple',
+        lastInput: settings.lastInput
       };
       saveSettings(newSettings);
       onClose();
@@ -111,11 +184,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         const content = event.target?.result as string;
         
         if (file.name.endsWith('.csv')) {
-          importCSV(content);
+          importCSV(content, importOverwrite);
           alert('CSV数据导入成功！');
         } else {
           const data = JSON.parse(content);
-          importData(data);
+          importData(data, importOverwrite);
           alert('JSON数据导入成功！');
         }
         
@@ -197,7 +270,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     min="0"
                     placeholder="≥工时"
                     value={condition.minHours}
-                    onChange={e => updateCondition(index, 'minHours', parseFloat(e.target.value) || 0)}
+                    onChange={e => updateSubsidyCondition(index, 'minHours', parseFloat(e.target.value) || 0)}
                     style={{ width: '70px' }}
                   />
                   <span>小时</span>
@@ -207,7 +280,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     min="0"
                     placeholder="补助"
                     value={condition.amount}
-                    onChange={e => updateCondition(index, 'amount', parseFloat(e.target.value) || 0)}
+                    onChange={e => updateSubsidyCondition(index, 'amount', parseFloat(e.target.value) || 0)}
                     style={{ width: '70px' }}
                   />
                   <span>{currency}</span>
@@ -253,17 +326,113 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </div>
             </div>
             <div className="form-group">
-              <label>备注模板</label>
+              <label>智能模板</label>
               <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                添加工时记录时自动生成备注。可用变量：{'{date}'}（日期）、{'{timeRange}'}（时间段）、{'{hours}'}（工时）、{'{tag}'}（标签）、{'{noonBreak}'}（中午休息）、{'{eveningBreak}'}（晚上休息）、{'{totalBreak}'}（总休息）
+                根据休息时间条件自动选择模板生成备注。可用变量：{'{date}'}（日期）、{'{timeRange}'}（时间段）、{'{hours}'}（工时）、{'{tag}'}（标签）、{'{noonBreak}'}（中午休息）、{'{eveningBreak}'}（晚上休息）、{'{totalBreak}'}（总休息）
               </small>
-              <textarea
-                value={noteTemplate}
-                onChange={e => setNoteTemplate(e.target.value)}
-                placeholder="例如：{'{date}'} {'{timeRange}'} 工作{'{hours}'}小时 {'{tag}'}"
-                rows={3}
-                style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
-              />
+              {smartTemplates.map(template => (
+                <div key={template.id} className="template-item">
+                  <div className="template-header">
+                    <span className="template-name">{template.name}</span>
+                    <div className="template-actions">
+                      <button className="edit-btn" onClick={() => editSmartTemplate(template)}>编辑</button>
+                      <button className="remove-btn" onClick={() => deleteSmartTemplate(template.id)}>删除</button>
+                    </div>
+                  </div>
+                  <div className="template-condition">
+                    <span>条件：</span>
+                    {template.conditions.noonBreak && (
+                      <span>中午休息 {operators.find(o => o.value === template.conditions.noonBreak)?.label} {template.conditions.noonBreakValue}</span>
+                    )}
+                    {template.conditions.noonBreak && template.conditions.eveningBreak && <span>且</span>}
+                    {template.conditions.eveningBreak && (
+                      <span>晚上休息 {operators.find(o => o.value === template.conditions.eveningBreak)?.label} {template.conditions.eveningBreakValue}</span>
+                    )}
+                  </div>
+                  <div className="template-content">
+                    {template.template}
+                  </div>
+                </div>
+              ))}
+              {smartTemplates.length === 0 && (
+                <div className="empty-template">暂无智能模板</div>
+              )}
+              <button className="add-btn-small" onClick={addSmartTemplate}>添加模板</button>
+              
+              {showTemplateForm && editingTemplate && (
+                <div className="template-form">
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label>模板名称</label>
+                    <input
+                      type="text"
+                      value={editingTemplate.name}
+                      onChange={e => updateTemplateField('name', e.target.value)}
+                      placeholder="如：中午休息"
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label>条件设置</label>
+                    <div className="condition-row">
+                      <span>中午休息</span>
+                      <select
+                        value={editingTemplate.conditions.noonBreak || ''}
+                        onChange={e => updateCondition('noonBreak', e.target.value || undefined)}
+                      >
+                        <option value="">无条件</option>
+                        {operators.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                      {editingTemplate.conditions.noonBreak && (
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={editingTemplate.conditions.noonBreakValue || 0}
+                          onChange={e => updateCondition('noonBreakValue', parseFloat(e.target.value) || 0)}
+                          style={{ width: '60px' }}
+                        />
+                      )}
+                    </div>
+                    <div className="condition-row">
+                      <span>晚上休息</span>
+                      <select
+                        value={editingTemplate.conditions.eveningBreak || ''}
+                        onChange={e => updateCondition('eveningBreak', e.target.value || undefined)}
+                      >
+                        <option value="">无条件</option>
+                        {operators.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                      {editingTemplate.conditions.eveningBreak && (
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={editingTemplate.conditions.eveningBreakValue || 0}
+                          onChange={e => updateCondition('eveningBreakValue', parseFloat(e.target.value) || 0)}
+                          style={{ width: '60px' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label>模板内容</label>
+                    <textarea
+                      value={editingTemplate.template}
+                      onChange={e => updateTemplateField('template', e.target.value)}
+                      placeholder="例如：{'{date}'} {'{timeRange}'} 工作{'{hours}'}小时"
+                      rows={3}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+                    />
+                  </div>
+                  <div className="form-actions">
+                    <button className="add-btn-small" onClick={saveSmartTemplate}>保存模板</button>
+                    <button className="remove-btn" onClick={() => { setShowTemplateForm(false); setEditingTemplate(null); }}>取消</button>
+                  </div>
+                </div>
+              )}
             </div>
             <button className="submit-btn" onClick={handleSave}>保存设置</button>
           </div>
@@ -283,7 +452,17 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </div>
             <div className="import-warning">
-              ⚠️ 导入数据会追加到当前记录，请谨慎操作
+              ⚠️ 导入数据会覆盖/追加到当前记录，请谨慎操作
+            </div>
+            <div className="form-group checkbox-group" style={{ marginTop: '12px' }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={importOverwrite}
+                  onChange={e => setImportOverwrite(e.target.checked)}
+                />
+                覆盖导入（同名日期的记录将被导入数据替换）
+              </label>
             </div>
           </div>
 
@@ -296,7 +475,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </div>
               <div className="about-item">
                 <span className="about-label">版本</span>
-                <span className="about-value">1.0.0</span>
+                <span className="about-value">1.0.6</span>
               </div>
               <div className="about-item">
                 <span className="about-label">联系作者</span>

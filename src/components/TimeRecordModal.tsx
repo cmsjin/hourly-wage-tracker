@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { formatDate, applyTemplate } from '../utils';
-import { addRecord, updateRecord, deleteRecord, getRecordsByDate, getSettings } from '../storage';
-import { TimeRecord } from '../types';
+import { useState, useEffect } from 'react';
+import { formatDate, applyTemplate, selectSmartTemplate } from '../utils';
+import { addRecord, updateRecord, deleteRecord, getRecordsByDate, getSettings, getHistoryTags, getLastInput, saveLastInput, getRecordMode, saveRecordMode, addTag } from '../storage';
+import { TimeRecord, RecordMode } from '../types';
 
 interface TimeRecordModalProps {
   date: Date;
@@ -25,6 +25,10 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const dateStr = formatDate(date);
   const records = getRecordsByDate(dateStr);
   const settings = getSettings();
+  const historyTags = getHistoryTags();
+  const lastInput = getLastInput();
+  
+  const [mode, setMode] = useState<RecordMode>(getRecordMode());
   const [hours, setHours] = useState('');
   const [note, setNote] = useState('');
   const [tag, setTag] = useState('');
@@ -37,6 +41,25 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const [showNotePopup, setShowNotePopup] = useState(false);
   const [generatedNote, setGeneratedNote] = useState('');
   
+  // 加载上次录入内容（增强模式）
+  useEffect(() => {
+    if (mode === 'advanced' && lastInput && !editingId) {
+      setHours(lastInput.hours || '');
+      setStartTime(lastInput.startTime || '');
+      setEndTime(lastInput.endTime || '');
+      setNoonBreak(lastInput.noonBreak || settings.noonBreak?.toString() || '1');
+      setEveningBreak(lastInput.eveningBreak || settings.eveningBreak?.toString() || '0');
+      setTag(lastInput.tag || '');
+      setNoSubsidy(lastInput.noSubsidy || false);
+    }
+  }, [mode]);
+  
+  // 切换模式时保存
+  const handleModeChange = (newMode: RecordMode) => {
+    setMode(newMode);
+    saveRecordMode(newMode);
+  };
+  
   const calculatedHours = () => {
     if (!startTime || !endTime) return null;
     const start = parseTime(startTime);
@@ -48,15 +71,21 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     return Math.max(0, diff - noonB - eveningB);
   };
   
-  // Auto-generate note preview from template
+  // Auto-generate note preview from smart template
   const getGeneratedNote = () => {
-    if (!settings.noteTemplate) return '';
-    const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
-    const validHours = (hoursNum !== null && !isNaN(hoursNum) && hoursNum > 0) ? hoursNum : undefined;
     const noonB = parseFloat(noonBreak) || 0;
     const eveningB = parseFloat(eveningBreak) || 0;
+    
+    const matchedTemplate = selectSmartTemplate(settings.smartTemplates || [], noonB, eveningB);
+    const templateToUse = matchedTemplate?.template || settings.noteTemplate || '';
+    
+    if (!templateToUse) return '';
+    
+    const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
+    const validHours = (hoursNum !== null && !isNaN(hoursNum) && hoursNum > 0) ? hoursNum : undefined;
+    
     return applyTemplate(
-      settings.noteTemplate,
+      templateToUse,
       dateStr,
       startTime || undefined,
       endTime || undefined,
@@ -65,6 +94,18 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
       noonB,
       eveningB
     );
+  };
+  
+  const copyGeneratedNote = async () => {
+    const note = getGeneratedNote();
+    if (note) {
+      try {
+        await navigator.clipboard.writeText(note);
+        alert('已复制到剪贴板');
+      } catch {
+        alert('复制失败');
+      }
+    }
   };
   
   const handleSubmit = () => {
@@ -111,6 +152,27 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
         noSubsidy: noSubsidy || undefined
       });
       
+      // 自动保存新标签到标签列表
+      if (tag) {
+        const existingTags = [...historyTags, ...(settings.tags || []).map(t => t.name)];
+        if (!existingTags.includes(tag)) {
+          addTag(tag, false);
+        }
+      }
+      
+      // 增强模式下保存上次录入内容
+      if (mode === 'advanced') {
+        saveLastInput({
+          hours,
+          startTime,
+          endTime,
+          noonBreak,
+          eveningBreak,
+          tag,
+          noSubsidy
+        });
+      }
+      
       if (generatedNote) {
         setGeneratedNote(generatedNote);
         setShowNotePopup(true);
@@ -118,14 +180,12 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
       }
     }
     
-    setHours('');
+    // 简洁模式清空，增强模式保留
+    if (mode === 'simple') {
+      setHours('');
+      setTag('');
+    }
     setNote('');
-    setTag('');
-    setStartTime('');
-    setEndTime('');
-    setNoonBreak(settings.noonBreak?.toString() || '1');
-    setEveningBreak(settings.eveningBreak?.toString() || '0');
-    setNoSubsidy(false);
     onClose();
   };
   
@@ -198,57 +258,77 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
           </div>
           
           <div className="form">
-            <div className="time-section">
-              <div className="form-group">
-                <label>开始时间</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  className="time-input"
-                />
-              </div>
-              <div className="form-group">
-                <label>结束时间</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={e => setEndTime(e.target.value)}
-                  className="time-input"
-                />
-              </div>
-              <div className="break-time-row">
-                <div className="form-group">
-                  <label>中午休息</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={noonBreak}
-                    onChange={e => setNoonBreak(e.target.value)}
-                    className="break-input"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>晚上休息</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={eveningBreak}
-                    onChange={e => setEveningBreak(e.target.value)}
-                    className="break-input"
-                  />
-                </div>
-              </div>
-              {calculatedHours() !== null && (
-                <div className="calculated-hours">
-                  <span>计算工时：</span>
-                  <span className="hours-value">{calculatedHours()!.toFixed(1)} 小时</span>
-                </div>
-              )}
+            {/* 模式切换 */}
+            <div className="mode-switch">
+              <button 
+                className={`mode-btn ${mode === 'simple' ? 'active' : ''}`}
+                onClick={() => handleModeChange('simple')}
+              >
+                简洁
+              </button>
+              <button 
+                className={`mode-btn ${mode === 'advanced' ? 'active' : ''}`}
+                onClick={() => handleModeChange('advanced')}
+              >
+                增强
+              </button>
             </div>
             
+            {/* 增强模式：时间输入 */}
+            {mode === 'advanced' && (
+              <div className="time-section">
+                <div className="form-group">
+                  <label>开始时间</label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    className="time-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>结束时间</label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    className="time-input"
+                  />
+                </div>
+                <div className="break-time-row">
+                  <div className="form-group">
+                    <label>中午休息</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={noonBreak}
+                      onChange={e => setNoonBreak(e.target.value)}
+                      className="break-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>晚上休息</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={eveningBreak}
+                      onChange={e => setEveningBreak(e.target.value)}
+                      className="break-input"
+                    />
+                  </div>
+                </div>
+                {calculatedHours() !== null && (
+                  <div className="calculated-hours">
+                    <span>计算工时：</span>
+                    <span className="hours-value">{calculatedHours()!.toFixed(1)} 小时</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 工时输入 */}
             <div className="form-group">
               <label>工时（小时）</label>
               <input
@@ -257,42 +337,56 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 min="0.5"
                 value={hours}
                 onChange={e => setHours(e.target.value)}
-                placeholder="输入工时（或通过时间计算）"
+                placeholder={mode === 'advanced' ? "输入工时（或通过时间计算）" : "输入工时"}
               />
             </div>
-            {settings.tags && settings.tags.length > 0 && (
-              <div className="form-group">
-                <label>标签（可选）</label>
-                <select
-                  value={tag}
-                  onChange={e => setTag(e.target.value)}
-                  className="tag-select"
-                >
-                  <option value="">无标签</option>
-                  {settings.tags.map(t => (
-                    <option key={t.name} value={t.name}>
-                      {t.name}{t.noSubsidy ? ' (无补助)' : ''}
-                    </option>
-                  ))}
-                </select>
+            
+            {/* 标签选择（下拉+历史标签） */}
+            <div className="form-group">
+              <label>标签（可选）</label>
+              <input
+                type="text"
+                value={tag}
+                onChange={e => setTag(e.target.value)}
+                placeholder="输入或选择标签"
+                list="history-tags"
+              />
+              <datalist id="history-tags">
+                {historyTags.map(t => (
+                  <option key={t} value={t} />
+                ))}
+                {settings.tags && settings.tags.map(t => (
+                  <option key={t.name} value={t.name} />
+                ))}
+              </datalist>
+            </div>
+            
+            {/* 增强模式：无补助选项 */}
+            {mode === 'advanced' && (
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={noSubsidy}
+                    onChange={e => setNoSubsidy(e.target.checked)}
+                  />
+                  无补助（该记录不计算日补助）
+                </label>
               </div>
             )}
-            <div className="form-group checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={noSubsidy}
-                  onChange={e => setNoSubsidy(e.target.checked)}
-                />
-                无补助（该记录不计算日补助）
-              </label>
-            </div>
-            {settings.noteTemplate && !editingId && (
+            
+            {/* 模板预览 */}
+            {((settings.smartTemplates && settings.smartTemplates.length > 0) || settings.noteTemplate) && !editingId && (
               <div className="form-group">
-                <label>模板预览</label>
+                <div className="preview-header">
+                  <label>模板预览</label>
+                  <button className="copy-btn" onClick={copyGeneratedNote}>复制</button>
+                </div>
                 <div className="note-preview">{getGeneratedNote() || '（填写信息后自动生成）'}</div>
               </div>
             )}
+            
+            {/* 备注 */}
             <div className="form-group">
               <label>备注（可选）</label>
               <input
@@ -302,6 +396,7 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 placeholder="添加备注"
               />
             </div>
+            
             <button className="submit-btn" onClick={handleSubmit}>
               {editingId ? '保存修改' : '添加记录'}
             </button>
