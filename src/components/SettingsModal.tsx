@@ -15,6 +15,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   );
   const [tags, setTags] = useState<Tag[]>(settings.tags || []);
   const [noteTemplate, setNoteTemplate] = useState(settings.noteTemplate || '');
+  const [noonBreak, setNoonBreak] = useState(settings.noonBreak?.toString() || '1');
+  const [eveningBreak, setEveningBreak] = useState(settings.eveningBreak?.toString() || '0');
   const [newTagName, setNewTagName] = useState('');
   const [newTagNoSubsidy, setNewTagNoSubsidy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +62,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         currency,
         subsidyConditions,
         tags,
-        noteTemplate
+        noteTemplate,
+        noonBreak: parseFloat(noonBreak) || 0,
+        eveningBreak: parseFloat(eveningBreak) || 0
       };
       saveSettings(newSettings);
       onClose();
@@ -154,6 +158,33 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </div>
             <div className="form-group">
+              <label>默认休息时间（小时）</label>
+              <div className="break-time-row">
+                <div className="break-item">
+                  <span className="break-label">中午休息</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={noonBreak}
+                    onChange={e => setNoonBreak(e.target.value)}
+                    className="break-input"
+                  />
+                </div>
+                <div className="break-item">
+                  <span className="break-label">晚上休息</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={eveningBreak}
+                    onChange={e => setEveningBreak(e.target.value)}
+                    className="break-input"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="form-group">
               <label>条件补助</label>
               <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
                 工时达到条件时自动发放补助，按条件顺序匹配
@@ -224,7 +255,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             <div className="form-group">
               <label>备注模板</label>
               <small style={{ color: '#999', fontSize: '12px', display: 'block', marginBottom: '8px' }}>
-                添加工时记录时自动生成备注。可用变量：{'{date}'}（日期）、{'{timeRange}'}（时间段）、{'{hours}'}（工时）、{'{tag}'}（标签）
+                添加工时记录时自动生成备注。可用变量：{'{date}'}（日期）、{'{timeRange}'}（时间段）、{'{hours}'}（工时）、{'{tag}'}（标签）、{'{noonBreak}'}（中午休息）、{'{eveningBreak}'}（晚上休息）、{'{totalBreak}'}（总休息）
               </small>
               <textarea
                 value={noteTemplate}

@@ -5,6 +5,11 @@ export function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDateMonthDay(dateStr: string): string {
+  const [, month, day] = dateStr.split('-');
+  return `${parseInt(month)}月${parseInt(day)}日`;
+}
+
 export function parseDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
@@ -54,34 +59,45 @@ export function formatHours(hours: number): string {
   return `${h}h${m}m`;
 }
 
-export function applyTemplate(template: string, date: string, startTime?: string, endTime?: string, hours?: number, tag?: string): string {
+export function applyTemplate(template: string, date: string, startTime?: string, endTime?: string, hours?: number, tag?: string, noonBreak?: number, eveningBreak?: number): string {
   if (!template) return '';
   
   let result = template;
   
-  // Replace {date}
-  result = result.replace(/{date}/g, date);
+  result = result.replace(/{date}/g, formatDateMonthDay(date));
   
-  // Replace {timeRange}
   if (startTime && endTime) {
     result = result.replace(/{timeRange}/g, `${startTime}-${endTime}`);
   } else {
     result = result.replace(/{timeRange}/g, '');
   }
   
-  // Replace {hours}
   if (hours !== undefined) {
     result = result.replace(/{hours}/g, hours.toString());
   } else {
     result = result.replace(/{hours}/g, '');
   }
   
-  // Replace {tag}
   if (tag) {
     result = result.replace(/{tag}/g, tag);
   } else {
     result = result.replace(/{tag}/g, '');
   }
+  
+  if (noonBreak !== undefined) {
+    result = result.replace(/{noonBreak}/g, noonBreak.toString());
+  } else {
+    result = result.replace(/{noonBreak}/g, '');
+  }
+  
+  if (eveningBreak !== undefined) {
+    result = result.replace(/{eveningBreak}/g, eveningBreak.toString());
+  } else {
+    result = result.replace(/{eveningBreak}/g, '');
+  }
+  
+  const totalBreak = (noonBreak || 0) + (eveningBreak || 0);
+  result = result.replace(/{totalBreak}/g, totalBreak.toString());
   
   return result;
 }

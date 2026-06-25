@@ -7,7 +7,8 @@ export interface TimeRecord {
   tag?: string;  // 标签
   startTime?: string;  // 开始时间 HH:mm
   endTime?: string;    // 结束时间 HH:mm
-  breakTime?: number;  // 休息时间（小时）
+  noonBreak?: number;  // 中午休息时间（小时）
+  eveningBreak?: number;  // 晚上休息时间（小时）
   noSubsidy?: boolean; // 是否无日补助
 }
 
@@ -35,6 +36,8 @@ export interface Settings {
   subsidyConditions: SubsidyCondition[];  // 条件补助列表
   tags: Tag[];  // 标签列表
   noteTemplate: string;  // 备注模板
+  noonBreak: number;  // 默认中午休息时间（小时）
+  eveningBreak: number;  // 默认晚上休息时间（小时）
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -42,5 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: '元',
   subsidyConditions: [],
   tags: [],
-  noteTemplate: ''
+  noteTemplate: '',
+  noonBreak: 1,
+  eveningBreak: 0
 };

@@ -26,12 +26,12 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const records = getRecordsByDate(dateStr);
   const settings = getSettings();
   const [hours, setHours] = useState('');
-  const [rate, setRate] = useState(settings.hourlyRate.toString());
   const [note, setNote] = useState('');
   const [tag, setTag] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [breakTime, setBreakTime] = useState('0');
+  const [noonBreak, setNoonBreak] = useState(settings.noonBreak?.toString() || '1');
+  const [eveningBreak, setEveningBreak] = useState(settings.eveningBreak?.toString() || '0');
   const [noSubsidy, setNoSubsidy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showNotePopup, setShowNotePopup] = useState(false);
@@ -41,10 +41,11 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     if (!startTime || !endTime) return null;
     const start = parseTime(startTime);
     const end = parseTime(endTime);
-    const breakH = parseFloat(breakTime) || 0;
+    const noonB = parseFloat(noonBreak) || 0;
+    const eveningB = parseFloat(eveningBreak) || 0;
     let diff = end - start;
     if (diff < 0) diff += 24;
-    return Math.max(0, diff - breakH);
+    return Math.max(0, diff - noonB - eveningB);
   };
   
   // Auto-generate note preview from template
@@ -52,13 +53,17 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
     if (!settings.noteTemplate) return '';
     const hoursNum = startTime && endTime ? calculatedHours() : parseFloat(hours);
     const validHours = (hoursNum !== null && !isNaN(hoursNum) && hoursNum > 0) ? hoursNum : undefined;
+    const noonB = parseFloat(noonBreak) || 0;
+    const eveningB = parseFloat(eveningBreak) || 0;
     return applyTemplate(
       settings.noteTemplate,
       dateStr,
       startTime || undefined,
       endTime || undefined,
       validHours,
-      tag || undefined
+      tag || undefined,
+      noonB,
+      eveningB
     );
   };
   
@@ -72,55 +77,54 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
       }
     }
     
-    const rateNum = parseFloat(rate);
-    
     if (!hoursNum || hoursNum <= 0) return;
+    
+    const noonB = parseFloat(noonBreak) || 0;
+    const eveningB = parseFloat(eveningBreak) || 0;
     
     if (editingId) {
       updateRecord(editingId, { 
         hours: hoursNum, 
-        rate: rateNum, 
+        rate: settings.hourlyRate, 
         note, 
         tag: tag || undefined,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
-        breakTime: parseFloat(breakTime) || undefined,
+        noonBreak: noonB > 0 ? noonB : undefined,
+        eveningBreak: eveningB > 0 ? eveningB : undefined,
         noSubsidy: noSubsidy || undefined
       });
       setEditingId(null);
     } else {
-      // Generate note from template
       const generatedNote = getGeneratedNote();
       
       addRecord({ 
         date: dateStr, 
         hours: hoursNum, 
-        rate: rateNum, 
+        rate: settings.hourlyRate, 
         note: generatedNote, 
         tag: tag || undefined,
         startTime: startTime || undefined,
         endTime: endTime || undefined,
-        breakTime: parseFloat(breakTime) || undefined,
+        noonBreak: noonB > 0 ? noonB : undefined,
+        eveningBreak: eveningB > 0 ? eveningB : undefined,
         noSubsidy: noSubsidy || undefined
       });
       
-      // Show popup and copy to clipboard
       if (generatedNote) {
         setGeneratedNote(generatedNote);
         setShowNotePopup(true);
-        navigator.clipboard.writeText(generatedNote).catch(() => {
-          // Ignore clipboard errors
-        });
+        navigator.clipboard.writeText(generatedNote).catch(() => {});
       }
     }
     
     setHours('');
-    setRate(settings.hourlyRate.toString());
     setNote('');
     setTag('');
     setStartTime('');
     setEndTime('');
-    setBreakTime('0');
+    setNoonBreak(settings.noonBreak?.toString() || '1');
+    setEveningBreak(settings.eveningBreak?.toString() || '0');
     setNoSubsidy(false);
     onClose();
   };
@@ -128,12 +132,12 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
   const handleEdit = (record: TimeRecord) => {
     setEditingId(record.id);
     setHours(record.hours.toString());
-    setRate(record.rate.toString());
     setNote(record.note);
     setTag(record.tag || '');
     setStartTime(record.startTime || '');
     setEndTime(record.endTime || '');
-    setBreakTime(record.breakTime ? record.breakTime.toString() : '0');
+    setNoonBreak(record.noonBreak ? record.noonBreak.toString() : (settings.noonBreak?.toString() || '1'));
+    setEveningBreak(record.eveningBreak ? record.eveningBreak.toString() : (settings.eveningBreak?.toString() || '0'));
     setNoSubsidy(!!record.noSubsidy);
   };
   
@@ -175,7 +179,9 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                   {record.startTime && record.endTime && (
                     <span className="record-time">
                       {record.startTime} - {record.endTime}
-                      {record.breakTime && record.breakTime > 0 && ` (休息${formatHours(record.breakTime)})`}
+                      {((record.noonBreak || 0) > 0 || (record.eveningBreak || 0) > 0) && (
+                        <span> (休息{formatHours((record.noonBreak || 0) + (record.eveningBreak || 0))})</span>
+                      )}
                     </span>
                   )}
                   {record.tag && <span className="record-tag">{record.tag}</span>}
@@ -211,16 +217,29 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                   className="time-input"
                 />
               </div>
-              <div className="form-group">
-                <label>休息时间（小时）</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={breakTime}
-                  onChange={e => setBreakTime(e.target.value)}
-                  className="break-input"
-                />
+              <div className="break-time-row">
+                <div className="form-group">
+                  <label>中午休息</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={noonBreak}
+                    onChange={e => setNoonBreak(e.target.value)}
+                    className="break-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>晚上休息</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={eveningBreak}
+                    onChange={e => setEveningBreak(e.target.value)}
+                    className="break-input"
+                  />
+                </div>
               </div>
               {calculatedHours() !== null && (
                 <div className="calculated-hours">
@@ -239,17 +258,6 @@ export function TimeRecordModal({ date, onClose }: TimeRecordModalProps) {
                 value={hours}
                 onChange={e => setHours(e.target.value)}
                 placeholder="输入工时（或通过时间计算）"
-              />
-            </div>
-            <div className="form-group">
-              <label>时薪（{settings.currency}/小时）</label>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                value={rate}
-                onChange={e => setRate(e.target.value)}
-                placeholder="输入时薪"
               />
             </div>
             {settings.tags && settings.tags.length > 0 && (
